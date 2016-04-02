@@ -26,20 +26,34 @@ class IfName:
         data = snmp.get('.1.3.6.1.2.1.31.1.1.1.1.{}'.format(key))
         return data
 
+    def get_ifaliases(self, snmp):
+        data = snmp.walk('.1.3.6.1.2.1.31.1.1.1.18', expect_str=True)
+        if not data:
+            raise Exception("SNMP walk failed")
+        return data
+
+    def get_ifalias(self, snmp, key):
+        data = snmp.get('.1.3.6.1.2.1.31.1.1.1.18.{}'.format(key))
+        return data
+
     def resolve(self, index, device=None):
         snmp = device.snmp
         hostname = device.hostname
         c_key = "IfName_" + hostname
+        a_key = "IfName_" + hostname
         if c_key not in self.cache:
             self.cache[c_key] = self.get_ifnames(snmp)
+            self.cache[a_key] = self.get_ifaliases(snmp)
 
         if not index:
             return None
 
         if index not in self.cache[c_key]:
             name = self.get_ifname(snmp, index)
+            alias = self.get_ifalias(snmp, index)
             if (name):
                 self.cache[c_key][index] = name
+                self.cache[a_key][index] = alias
             else:
                 logging.warning(
                     "Failed fetch ifname for {} index {}"
@@ -47,4 +61,4 @@ class IfName:
                 )
                 return None
 
-        return {"interface": self.cache[c_key][index]}
+        return {"interface": self.cache[c_key][index], "description": self.cache[a_key][index]}
